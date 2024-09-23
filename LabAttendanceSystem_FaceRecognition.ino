@@ -17,6 +17,7 @@ SoftwareSerial mySerial(6, 7);  //GSM Pin Connection
 
 #define RESTART_BUTTON 3  // Push BUTTON
 
+String message = "";
 // RFID and LCD instances
 RFID RC522(SDA_DIO, RESET_DIO);
 LiquidCrystal_I2C lcd(0x27, 16, 2);
@@ -170,32 +171,41 @@ void endSession() {
   lcd.setCursor(2, 0);
   lcd.print("Lab Session");
   lcd.setCursor(5, 1);
-  lcd.print("Ended");
+  lcd.print("Ended");updateSerial();
+  updateSerial();
   delay(5000);
 
   mySerial.println("AT+CMGF=1");  // Configuring TEXT mode
   updateSerial();
   mySerial.println("AT+CMGS=\"+254748613509\"");   // Change ZZ with country code and xxxxxxxxxxx with phone number to SMS
   updateSerial();
-  String message = "Students who attended and stayed until the end:\n";
+  
+  // Building the message for students who attended and stayed
+  message = "Students who attended and stayed until the end\n";  // Reset message
   for (int i = 0; i < 5; i++) {
     if (attended[i] && !exited[i]) {
       message += students[i] + " - ENT: " + entryTimes[i] + "\n";
     }
   }
+  mySerial.println(message);  // Send the message for students who attended and stayed
+  updateSerial();
+  delay(1000);
 
-  message += "\nStudents who attended but left early:\n";
+  // Reset the message for students who left early
+  message = "Students who attended but left early\n";  // Reset message
   for (int i = 0; i < 5; i++) {
     if (attended[i] && exited[i]) {
       message += students[i] + " - ENT: " + entryTimes[i] + ", EXT: " + exitTimes[i] + "\n";
     }
   }
-  mySerial.print(message);  // Text content
+  mySerial.println(message);  // Send the message for students who left early
   updateSerial();
+  delay(1000);
+
   mySerial.write(26);
   delay(2000);
 
-  Serial.println(message);
+  //Serial.println(message);
 
   // Reset trackers and session state
   Tracker_1 = Tracker_2 = Tracker_3 = Tracker_4 = Tracker_5 = 0;
@@ -203,7 +213,11 @@ void endSession() {
     attended[i] = exited[i] = false;
     entryTimes[i] = exitTimes[i] = "";
   }
+  // Reset time to 8:00 AM for the next session
+  startHour = 8;
+  startMinute = 0;
   currentMinute = 0;
+  
   Sms = 0;
   changeState(INIT);
 }
